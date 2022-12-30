@@ -42,14 +42,11 @@ class ImageSearchSession:
     def numResultsAvailable(self):
         return self._numResultsAvailable
 
-
     def searchPrev(self):
         if self._offset == 0:
             return
-
         offset = self._offset + self._numResultsRequested
         self.search(self._query, offset)
-
 
     def searchNext(self):
         if self._offset + self._numResultsRequested >= self._numResultsAvailable:
@@ -57,7 +54,6 @@ class ImageSearchSession:
 
         offset = self._offset + self._numResultsRequested
         self.search(self._query, self._numResultsRequested, offset)
-
 
     def search(self, query, numResultsRequested=50, offset=0):
         bing_key = os.environ.get("BING_SEARCH_KEY")
@@ -69,7 +65,6 @@ class ImageSearchSession:
         self._query = query
         self._numResultsRequested = numResultsRequested
         self._offset = offset
-
         params = {'color':'ColorOnly', 'imageType':'Photo'}
         searchService = PyMsCognitiveImageSearch(bing_key, query, custom_params=params)
         searchService.current_offset = offset
@@ -77,7 +72,7 @@ class ImageSearchSession:
         try:
             self._results = searchService.search(numResultsRequested, 'json')
         except Exception as e:
-            sys.stderr.write(f"Error as : {e}")
+            sys.stderr.write(f"Error as here: {e}")
 
             self._offset = 0
             self._numResultsReceived = 0
@@ -85,21 +80,11 @@ class ImageSearchSession:
 
         __json = searchService.most_recent_json
 
-        # with
-        # import json
-        # with open('data.json', 'r') as f:
-        #     __json = json.load(f)
-
-        # self._results = [__json]
-
-        # print(f"count_results_received: {self._results}")
-
         self._numResultsReceived = len(self._results)
         if self._numResultsRequested < self._numResultsReceived:
             self._numResultsRequested = self._numResultsReceived
         self._numResultsAvailable = self._numResultsReceived
 
-        # print(f"json_received: {__json}")
         self._numResultsAvailable = int(__json[u"totalEstimatedMatches"])
 
         if self.verbose:
@@ -108,7 +93,12 @@ class ImageSearchSession:
             pprint.pprint(__json)
 
     def get_cv_image_and_url(self, index, useThumbnail=False):
-        """"""
+        """
+        extract the url from the bing api response and get the read the image as array
+        :param index: the current index of the result
+        :param useThumbnail:
+        :return: image array
+        """
         if index >= self._numResultsReceived:
                 return None, None
         result = self._results[index]

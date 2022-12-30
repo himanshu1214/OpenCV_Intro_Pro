@@ -12,30 +12,33 @@ HEADERS = {'User-Agent': 'Mozilla/5.0' \
            }
 
 
-
 def validate_response(response):
-    """"""
+    """
+    this method is used validate response
+    :param response: request response
+    :return: boolean status
+    """
     status = response.status_code
     if status == 200:
         return True
-
     sys.stderr.write(f"Error code received: {status} for URL :  {response.url}")
     return False
 
 
 def getcvImageFromUrl(url):
-    """"""
+    """
+    this method is to efficiently read image from internet
+    :param url: image url
+    :return: image array
+    """
     response = requests.get(url, headers=HEADERS)
-
     if not validate_response(response):
         return None
     image_data = numpy.frombuffer(response.content, numpy.uint8)
     image = cv2.imdecode(image_data, cv2.IMREAD_COLOR)
-
     if image is None:
         sys.stderr.write('Failed')
 
-    print("got the correct image")
     return image
 
 
@@ -43,6 +46,7 @@ def main():
     image = getcvImageFromUrl('http://nummist.com/images/ceiling.gaze.jpg')
     if image is not None:
         cv2.imwrite('image.png', image)
+
 
 if __name__ == '__main__':
     main()
