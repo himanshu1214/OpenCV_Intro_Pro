@@ -4,3 +4,5 @@ venv
 .env
 *.pem
 *.zip
+results
+__json.json

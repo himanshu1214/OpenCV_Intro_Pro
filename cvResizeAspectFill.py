@@ -1,8 +1,13 @@
+import cv2
 import numpy
 
-import cv2
 
-def resize_image(src, max_size, up_interpolation=cv2.INTER_LANCZOS4, down_interpolation=cv2.INTER_AREA):
+def resize_image(
+    src,
+    max_size,
+    up_interpolation=cv2.INTER_LANCZOS4,
+    down_interpolation=cv2.INTER_AREA,
+):
     h, w = src.shape[:2]
     if w > h:
         if w > max_size:
@@ -10,7 +15,7 @@ def resize_image(src, max_size, up_interpolation=cv2.INTER_LANCZOS4, down_interp
         else:
             interpolation = up_interpolation
 
-        h = int(max_size*h/(float(w)))
+        h = int(max_size * h / (float(w)))
         w = max_size
 
     else:
@@ -19,7 +24,7 @@ def resize_image(src, max_size, up_interpolation=cv2.INTER_LANCZOS4, down_interp
         else:
             interpolation = up_interpolation
 
-        w = int(max_size*w / float(h))
+        w = int(max_size * w / float(h))
 
-    f_img = cv2.resize(src,(w, h), interpolation=interpolation)
+    f_img = cv2.resize(src, (w, h), interpolation=interpolation)
     return f_img

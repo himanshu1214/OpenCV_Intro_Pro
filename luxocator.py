@@ -1,87 +1,121 @@
 #!/usr/bin/env python
 
 import os
-
-import numpy
-import cv2
-
 import threading
-import wx
 
+import cv2
+import numpy
+import sys
+
+import wx
+import traceback
+
+import cvResizeAspectFill
+import pyinstaller_utils
+import wx_utils
 from histogram_classifier import HistogramClassifier
 from image_search_session import ImageSearchSession
-import pyinstaller_utils
-import cvResizeAspectFill
-import wx_utils
 
+def show_error():
+    message = ''.join(traceback.format_exception(*sys.exc_info()))
+    dialog = wx.MessageDialog(None, message, 'Error!', wx.OK|wx.ICON_ERROR)
+    dialog.ShowModal()
 
 class Luxocator(wx.Frame):
     # Subclassing the wx.Frame class
 
-    def __init__(self, classifier_path, max_image_size=768):
-        style = wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.CAPTION | wx.SYSTEM_MENU | wx.CLIP_CHILDREN
-        wx.Frame.__init__(self, None, title='Luxocator', style=style)
+    def __init__(
+        self,
+        classifier_path,
+        max_image_size=768,
+        verboseSearchSession=False,
+        verboseClassifier=False,
+    ):
+        """
+        this class is subclass of wx.Frame
+        :param classifier_path: path for classfier format
+        :param max_image_size:
+        :param verboseSearchSession:
+        :param verboseClassifier:
+        """
+        style = (
+            wx.CLOSE_BOX
+            | wx.MINIMIZE_BOX
+            | wx.CAPTION
+            | wx.SYSTEM_MENU
+            | wx.CLIP_CHILDREN
+        )
+        wx.Frame.__init__(self, None, title="Luxocator", style=style)
         self.SetBackgroundColour(wx.Colour(232, 232, 232))
         self._maxImageSize = max_image_size
         border = 12
-        default_query_image = 'luxury condo sales'
+        default_query_image = "luxury condo sales"
         self._index = 0
 
         # Begin image search session object
         self._session = ImageSearchSession()
-        self._session.verbose = False
+        self._session.verbose = verboseSearchSession
         self._session.search(default_query_image)
 
         # image classifier object
         self._classifier = HistogramClassifier()
-        self._classifier.verbose = True
+        self._classifier.verbose = verboseClassifier
         self._classifier.deserialize(classifier_path)
 
-        self.Bind(wx.EVT_SIZE, self._onCloseWindow)
+        self.Bind(wx.EVT_CLOSE, self._onCloseWindow)
 
-        # quit_command = wx.NewId()
-        # self.Bind(wx.EVT_MENU, self._onQuitCommand, id=quit_command)
-        # accelerator_table = wx.AcceleratorTable([(wx.ACCEL_NORMAL, wx.WXK_ESCAPE, quit_command)])
-        # self.SetAcceleratorTable(accelerator_table)
+        quit_command = wx.NewId()
+        self.Bind(wx.EVT_MENU, self._onQuitCommand, id=quit_command)
+        accelerator_table = wx.AcceleratorTable(
+            [(wx.ACCEL_NORMAL, wx.WXK_ESCAPE, quit_command)]
+        )
+        self.SetAcceleratorTable(accelerator_table)
 
         # Add button controls for text field, search button and cancel button
 
-        self._searchCtrl = wx.SearchCtrl(self,
-                                         size=(self._maxImageSize / 3, -1),
-                                         style=wx.TE_PROCESS_ENTER)
+        self._searchCtrl = wx.SearchCtrl(
+            self, size=(self._maxImageSize / 3, -1), style=wx.TE_PROCESS_ENTER
+        )
 
         # Sets the new text control value.
         self._searchCtrl.SetValue(default_query_image)
-        self._searchCtrl.Bind(wx.EVT_TEXT_ENTER,self._onSearchEntered) # binds to look the criteria
-        self._searchCtrl.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN,self._onSearchEntered)
+        self._searchCtrl.Bind(
+            wx.EVT_TEXT_ENTER, self._onSearchEntered
+        )  # binds to look the criteria
+        self._searchCtrl.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self._onSearchEntered)
         self._searchCtrl.Bind(wx.EVT_SEARCHCTRL_CANCEL_BTN, self._onSearchCancelled)
 
         # set label
         self._labelStaticText = wx.StaticText(self)
 
         # set previous button
-        self._prevButton = wx.Button(self, label='Prev')
+        self._prevButton = wx.Button(self, label="Prev")
         self._prevButton.Bind(wx.EVT_BUTTON, self._onPrevButtonClicked)
 
         # set next button
-        self._nextButton = wx.Button(self, label='Next')
+        self._nextButton = wx.Button(self, label="Next")
         self._nextButton.Bind(wx.EVT_BUTTON, self._onNextButtonClicked)
 
         # bitmap
         self._staticBitmap = wx.StaticBitmap(self)
 
+
         # Defining horizontal layout for search control on the left - label in middle - prev + next on right
         controls_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        controls_sizer.Add(self._searchCtrl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border)
+        controls_sizer.Add(
+            self._searchCtrl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border
+        )
         controls_sizer.Add((0, 0), 1)  # spacer
         controls_sizer.Add(self._labelStaticText, 0, wx.ALIGN_CENTER_VERTICAL)
         controls_sizer.Add((0, 0), 1)  # spacer
-        controls_sizer.Add(self._prevButton, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT | wx.RIGHT, border)
+        controls_sizer.Add(
+            self._prevButton, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT | wx.RIGHT, border
+        )
         controls_sizer.Add(self._nextButton, 0, wx.ALIGN_CENTER_VERTICAL)
 
         # Defining bitmap layout using another wx.BoxSizer instance
         self._rootSizer = wx.BoxSizer(wx.VERTICAL)
-        self._rootSizer.Add(self._staticBitmap,0, wx.Top | wx.LEFT | wx.RIGHT, border)
+        self._rootSizer.Add(self._staticBitmap, 0, wx.Top | wx.LEFT | wx.RIGHT, border)
         self._rootSizer.Add(controls_sizer, 0, wx.EXPAND | wx.ALL, border)
         self.SetSizerAndFit(self._rootSizer)
         self._updateImageAndControls()
@@ -106,8 +140,7 @@ class Luxocator(wx.Frame):
 
     # defining callbacks
     def _onCloseWindow(self, event):
-        """cleans up the application
-        """
+        """cleans up the application"""
         self.Destroy()
 
     def _onQuitCommand(self, event):
@@ -186,38 +219,43 @@ class Luxocator(wx.Frame):
         :return:
         """
         self._disableControls()
+
         # show busy cursor
         wx.BeginBusyCursor()
 
         # run image in background thread
         threading.Thread(target=self._updateImageAndControlsAsync).start()
 
+
     def _updateImageAndControlsAsync(self):
         """
 
         :return:
         """
+
         if self._session.numResultsReceived == 0:
             image = None
-            label = 'No results found'
+            label = "No results found"
         else:
-            image, url = self._session.get_cv_image_and_url(self._index % self._session.numResultsRequested)
+            image, url = self._session.get_cv_image_and_url(
+                self._index % self._session.numResultsRequested
+            )
+
             if image is None:
-                label = 'No image found'
+                label = "No image found"
             else:
                 # we received the image , now classify
-                label = self._classifier.classify(image,  url)
+                label = self._classifier.classify(image, url)
 
                 # resize the image using autofill to display in an appropriate size
                 image = cvResizeAspectFill.resize_image(image, self._maxImageSize)
 
-        # Update GUI in the main thread
-        wx.CallAfter(self._updateImageAndControlsResync,  image, label)
+        wx.CallAfter(self._updateImageAndControlsResync, image, label)
 
     def _updateImageAndControlsResync(self, image, label):
         """
         synchronous method to remove the busy cursor and create wxPython bitmap format
-        :arg
+        :args
             image: opencv format image
             label:
 
@@ -227,8 +265,7 @@ class Luxocator(wx.Frame):
         wx.BusyCursor()
         if image is None:
             # return the black background
-            bitmap = wx.Bitmap(self._maxImageSize, self._maxImageSize / 2)
-
+            bitmap = wx.Bitmap(self._maxImageSize,self._maxImageSize//2)
         else:
             # convert the image into pybitmap format
             bitmap = wx_utils.convert_color_fromcv2_towx(image)
@@ -250,15 +287,11 @@ class Luxocator(wx.Frame):
 
 
 def main():
-    """
-
-    :return:
-    """
-    # os.environ['REQUESTS_CA_BUNDLE'] = pyinstaller_utils.resource_path_resolver('cacert.pem')
     app = wx.App()
-    luxocator = Luxocator(pyinstaller_utils.resource_path_resolver('classifier.mat'))
+    luxocator = Luxocator(pyinstaller_utils.resource_path_resolver("classifier.mat"))
     luxocator.Show()
     app.MainLoop()
 
-if __name__=='__main__':
+
+if __name__ == "__main__":
     main()

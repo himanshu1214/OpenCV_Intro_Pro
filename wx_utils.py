@@ -1,8 +1,8 @@
-import numpy
 import cv2
+import numpy
 import wx
 
-wx_major_version = int(wx.__version__.split('.')[0])
+wx_major_version = int(wx.__version__.split(".")[0])
 
 print(f"major_version: {wx_major_version}")
 
@@ -18,7 +18,7 @@ def convert_color_fromcv2_towx(image):
 
     # read into bitmap
     if wx_major_version < 4:
-        bitmap = wx.BitmapFromBuffer(w,h, image_colr)
+        bitmap = wx.BitmapFromBuffer(w, h, image_colr)
 
     else:
         bitmap = wx.Bitmap.FromBuffer(w, h, image_colr)
