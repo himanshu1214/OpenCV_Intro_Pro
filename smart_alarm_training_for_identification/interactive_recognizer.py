@@ -56,7 +56,7 @@ class InteractiveRecognizer(wx.Frame):
         # capture and processing in two separate threads using thread locking (mutex)
         self._image = None
         self_gray_image = None
-        self.__equalized_gray_image = None
+        self._equalized_gray_image = None
 
         self._image_from_buffer = None
         self._image_front_buffer_lock = threading.Lock()
@@ -87,7 +87,10 @@ class InteractiveRecognizer(wx.Frame):
         )
         self._rectColor = rect_color
 
-        # Adding the GUI vars
+        # setting the GUI widgets (video panel, buttons, label, text field) and set their callbacks
+        self._videoPanel = wx.Panel(self, size=size)
+        self._videoPanel.Bind(wx.EVT_ERASE_BACKGROUND, self._onVideoPanelEraseBackground)
+
 
         # Setting the style, background colour, size and title
         style = (
@@ -130,3 +133,49 @@ class InteractiveRecognizer(wx.Frame):
         then swapping of old buffer and new buffer image happens by acquiring mutex
         :return:
         """
+        while self._running:
+            success, self._image = self._capture.read(self._image)
+            if self._image is not None:
+                self._detect_and_recognize()
+                if self.mirrored:
+                    # flip the image i.e. mirror the image
+                    self._image[:] = numpy.fliplr(self._image)
+
+                    # swapping the image captured to front buffer and front to back buffer
+                    self._image_front_buffer_lock.acquire()
+                    self._image, self._image_from_buffer = self._image_from_buffer, self._image
+
+                    # release the lock
+                    self._image_front_buffer_lock.release()
+
+                    # the image is drawn from the video into the front buffer
+                    # send a refresh event to the video panel
+                    self._videoPanel.Refresh()
+
+    def _detect_and_recognize(self):
+        """
+        helper method which runs in the background thread and helps in detecting face
+        using grayscale to create uniformity of image by removing the colored into gray scale
+        :return:
+        """
+        self._gray_image = cv2.cvtColor(
+            self._image, cv2.COLOR_BGR2GRAY, self._gray_image
+        )
+        self._equalized_gray_image = cv2.equalizeHist(
+            self._gray_image, self._equalized_gray_image
+        )
+
+        # using Multiscale method to detect face and use green rectangle as boundary
+        # return a list of rectangles which shows the bound of face
+        detct = self._detector.detectMultiScale(self._equalized_gray_image,
+                                                scaleFactor=self._scaleFactor,
+                                                min_neighbor=self._minNeighbors,
+                                                minSize=self._minSize)
+
+        for x,y, w, h in detct:
+            cv2.rectangle(self._image, (x, y), (x+w, y+h), self._rectColor, 1)
+
+        if len(detct) >0:
+            x, y, w,h = detct[0]
+            # if atleast one face is detected, store detected face in equalized gray scale
+            self._curr_detected_obj = cv2.equalizeHist(self._gray_image[y:y+h, x:x+w])
