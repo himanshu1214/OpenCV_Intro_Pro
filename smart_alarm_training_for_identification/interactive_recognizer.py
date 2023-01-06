@@ -89,7 +89,7 @@ class InteractiveRecognizer(wx.Frame):
 
         # setting the GUI widgets (video panel, buttons, label, text field) and set their callbacks
         self._videoPanel = wx.Panel(self, size=size)
-        self._videoPanel.Bind(wx.EVT_ERASE_BACKGROUND, self._onVideoPanelEraseBackground)
+        self._videoPanel.Bind(wx.EVT_ERASE_BACKGROUND, self._on_video_panel_erase_background)
 
 
         # Setting the style, background colour, size and title
@@ -125,6 +125,14 @@ class InteractiveRecognizer(wx.Frame):
                 os.makedirs(model_dir)
             self._recognizer.write(self._recognizer_path)
         self.Destroy()
+
+    def _onQuitCommand(self, event):
+        """
+        callback method to close the window and attaches the Esc
+        :param event:
+        :return:
+        """
+        self.Close()
 
     def run_capture_loop(self):
         """
@@ -178,4 +186,59 @@ class InteractiveRecognizer(wx.Frame):
         if len(detct) >0:
             x, y, w,h = detct[0]
             # if atleast one face is detected, store detected face in equalized gray scale
+            # equalized image is based on the cropped image for better avg local contrast instead of whole image
             self._curr_detected_obj = cv2.equalizeHist(self._gray_image[y:y+h, x:x+w])
+
+        # if model exist even for 1 image trained, then model will return 2 integer name and distance (confidence value)
+            if self._recognizerTrained:
+                try:
+                    label_as_int, distance = self._recognizer.predict(self._curr_detected_obj)
+                    label_as_str = binascii_utils.int_to_four_char(label_as_int)
+                    self._show_message(f"Looks similar to the image :{label_as_str} and distance is : {distance}")
+                except cv2.error:
+                    print >> sys.stderr,  'recreating model due to err'
+                    self.clear_model()
+
+            else:
+                self._show_instruction()
+        else:
+            self._curr_detected_obj = None  # set current object detected to None
+            if self._recognizerTrained: # if model exist then print message on screen
+                self._clear_message()
+            else: # show instructions
+                self._show_instructions()
+
+        # adding the enable/disable add to model button
+        self._enable_or_disable_update_model_button()
+
+    def _enable_or_disable_update_model_button(self):
+        """this method is implemented based on the image is detected, if detected and text box is not empty
+        then show enable the button
+        """
+        label_as_str = self._reference_txt_ctrl.GetValue()
+        if len(label_as_str) < 1 or self._curr_detected_obj is None:
+            self._update_model_button.Disable()
+        else:
+            self._update_model_button.Enable()
+
+    def _on_video_panel_erase_background(self, event):
+        """not doing anything just passing the previous image , draw over the old video frame"""
+        pass
+
+    def _on_video_panel_paint(self, event):
+        """
+        In thread safe manner - use the front image buffer and convert it into bitmap and finally show it to GUI
+        """
+        self._image_front_buffer_lock.acquire()
+        if self._image_from_buffer is None:
+            self._image_front_buffer_lock.release()
+            return
+        # Convert the image into wxPython bitmap
+        self._videoBitmap = wx_utils.convert_color_fromcv2_towx(self._image_from_buffer)
+
+        self._image_front_buffer_lock.release()
+
+        # Show the bitmap
+        dc = wx.BufferedPaintDC(self._videoPanel)
+        dc.DrawBitmap(self._videoBitmap, 0, 0)
+
