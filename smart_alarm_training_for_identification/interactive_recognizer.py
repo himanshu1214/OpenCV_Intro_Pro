@@ -105,6 +105,39 @@ class InteractiveRecognizer(wx.Frame):
         self.SetBackgroundColour(wx.Colour(232, 232, 232))
         self.Bind(wx.EVT_CLOSE, self._onCloseWindow)
 
+        # add a callback for esc key, given key is not GUI widget -> no Bind method available for callback
+        # Bind a new menu item and callback to the interactive recognizer instance
+        # map a keyboard shortcut to the menu event using class wx.AcceleratorTable
+        quit_command_id = wx.NewId()
+        self.Bind(wx.EVT_MENU, self._on_quit_command, id=quit_command_id)
+        accelerator_table = wx.AcceleratorTable([(wx.ACCEL_NORMAL, wx.WXK_ESCAPE, quit_command_id)])
+        self.SetAcceleratorTable(accelerator_table)
+
+        # add a video panel , text field, panel and label
+        self._videoPanel = wx.Panel(self, size=size)
+        self._videoPanel.Bind(wx.EVT_ERASE_BACKGROUND, self._on_video_panel_erase_background) # binding the callback to erase
+        self._videoPanel.Bind(wx.EVT_PAINT, self._on_video_panel_paint)  # bind callback to set the images
+
+        # add reference Txt control button
+        self._referenceTextCtrl = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self._referenceTextCtrl.SetMaxLength(4)  # max length is 4 chars
+        self._referenceTextCtrl.Bind(wx.EVT_KEY_UP, self._on_reference_text_ctrl_key_up)
+
+        self._predictionStaticText = wx.StaticText(self)
+
+        #  add newline char
+        self._predictionStaticText.SetLabel('\n')
+
+        # add clear model button
+        self._clearModelButton = wx.Button(self, label='Clear Model')
+        self._clearModelButton.Bind(
+            wx.EVT_BUTTON, self._clear_model
+        )
+
+        # add update model button
+        self._updateModelButton = wx.Button(self, label='Add to model')
+        self._updateModelButton.Bind(wx.EVT_BUTTON, self._update_model)
+
         # starting a background thread which captures the video and processs, detects and recognize
         # handling the compute intensive work in background for unblocking the GUI events
         self._captureThread = threading.Thread(target=self.run_capture_loop)
@@ -126,13 +159,56 @@ class InteractiveRecognizer(wx.Frame):
             self._recognizer.write(self._recognizer_path)
         self.Destroy()
 
-    def _onQuitCommand(self, event):
+    def _on_quit_command(self, event):
         """
         callback method to close the window and attaches the Esc
         :param event:
         :return:
         """
         self.Close()
+
+
+    def _on_video_panel_erase_background(self):
+        """"""
+
+    def _on_reference_text_ctrl_key_up(self):
+        """
+        this method is callback based on the text for image detected and chose to enable or disable add to model button
+        :return:
+        """
+        self._enable_or_disable_update_model_button()
+
+    def _update_model(self, event):
+        """
+        this method is used as a callback, provides training data to the recognition model. Either train model for no prior
+        training data or update
+        :return:
+        """
+        # get label from
+        label_as_str = self._referenceTextCtrl.GetValue()
+        label_as_int = binascii_utils.four_char_to_int(label_as_str)
+        src = [self._curr_detected_obj]
+        labels = numpy.array([label_as_int])
+
+        # check if model exist using the trained model flag
+        if self._recognizerTrained:
+            self._recognizer.update(src,labels)
+        else:
+            self._recognizer.train(src, labels)
+            self._recognizerTrained = True
+            # enable clear model here
+            self._clearModelButton.Disable()
+
+    def _clear_model(self, event=None):
+        """
+        the callback method will delete the existing model and creates a new one and disable the delete button
+        :return:
+        """
+        self._recognizerTrained = False
+        self._clearModelButton().Disable()
+        if os.path.isfile(self._recognizer_path):
+            os.remove(self._recognizer_path)
+        self._recognizer = cv2.face.LBPHFaceRecognizer_create()  # create the new untrained model
 
     def run_capture_loop(self):
         """
@@ -200,7 +276,7 @@ class InteractiveRecognizer(wx.Frame):
                     self.clear_model()
 
             else:
-                self._show_instruction()
+                self._show_instructions()
         else:
             self._curr_detected_obj = None  # set current object detected to None
             if self._recognizerTrained: # if model exist then print message on screen
@@ -215,11 +291,11 @@ class InteractiveRecognizer(wx.Frame):
         """this method is implemented based on the image is detected, if detected and text box is not empty
         then show enable the button
         """
-        label_as_str = self._reference_txt_ctrl.GetValue()
+        label_as_str = self._referenceTextCtrl.GetValue()
         if len(label_as_str) < 1 or self._curr_detected_obj is None:
-            self._update_model_button.Disable()
+            self._updateModelButton.Disable()  # implemented all button in the app initiation
         else:
-            self._update_model_button.Enable()
+            self._updateModelButton.Enable()
 
     def _on_video_panel_erase_background(self, event):
         """not doing anything just passing the previous image , draw over the old video frame"""
@@ -241,4 +317,19 @@ class InteractiveRecognizer(wx.Frame):
         # Show the bitmap
         dc = wx.BufferedPaintDC(self._videoPanel)
         dc.DrawBitmap(self._videoBitmap, 0, 0)
+
+    # helper methods to show message
+    def _show_instructions(self):
+        """"""
+        self._show_message('when object is highlighted, input the name max four chars \n'
+                           'and click add to model')
+
+    def _clear_message(self):
+        """"""
+        self._show_message("\n")
+
+    def _show_message(self, message):
+        """"""
+        wx.CallAfter(self._prediction_static_text, message)
+
 
