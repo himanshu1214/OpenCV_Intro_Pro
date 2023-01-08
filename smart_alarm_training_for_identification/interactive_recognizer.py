@@ -5,10 +5,10 @@ import threading
 import cv2
 import numpy
 import wx
-import wx_utils
 
 import binascii_utils
 import resize_utils
+import wx_utils
 
 
 class InteractiveRecognizer(wx.Frame):
@@ -55,7 +55,7 @@ class InteractiveRecognizer(wx.Frame):
 
         # capture and processing in two separate threads using thread locking (mutex)
         self._image = None
-        self_gray_image = None
+        self._gray_image = None
         self._equalized_gray_image = None
 
         self._image_from_buffer = None
@@ -102,7 +102,7 @@ class InteractiveRecognizer(wx.Frame):
             | wx.CAPTION
             | wx.CLIP_CHILDREN
         )
-        super().__init__(self, None, title=title, style=style, size=size)
+        wx.Frame.__init__(self, None, title=title, style=style, size=size)
         self.SetBackgroundColour(wx.Colour(232, 232, 232))
         self.Bind(wx.EVT_CLOSE, self._onCloseWindow)
 
@@ -197,6 +197,7 @@ class InteractiveRecognizer(wx.Frame):
 
     def _on_video_panel_erase_background(self):
         """"""
+        pass
 
     def _on_reference_text_ctrl_key_up(self):
         """
@@ -232,7 +233,7 @@ class InteractiveRecognizer(wx.Frame):
         :return:
         """
         self._recognizerTrained = False
-        self._clearModelButton().Disable()
+        self._clearModelButton.Disable()
         if os.path.isfile(self._recognizer_path):
             os.remove(self._recognizer_path)
         self._recognizer = (
@@ -313,7 +314,7 @@ class InteractiveRecognizer(wx.Frame):
                     )
                 except cv2.error:
                     print >> sys.stderr, "recreating model due to err"
-                    self.clear_model()
+                    self._clear_model()
 
             else:
                 self._show_instructions()
@@ -372,4 +373,4 @@ class InteractiveRecognizer(wx.Frame):
 
     def _show_message(self, message):
         """"""
-        wx.CallAfter(self._prediction_static_text, message)
+        wx.CallAfter(self._predictionStaticText, message)
