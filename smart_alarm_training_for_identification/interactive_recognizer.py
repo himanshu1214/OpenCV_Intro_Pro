@@ -115,8 +115,9 @@ class InteractiveRecognizer(wx.Frame):
 
         # add a video panel , text field, panel and label
         self._videoPanel = wx.Panel(self, size=size)
-        self._videoPanel.Bind(wx.EVT_ERASE_BACKGROUND, self._on_video_panel_erase_background) # binding the callback to erase
+        self._videoPanel.Bind(wx.EVT_ERASE_BACKGROUND, self._on_video_panel_erase_background)  # binding the callback to erase
         self._videoPanel.Bind(wx.EVT_PAINT, self._on_video_panel_paint)  # bind callback to set the images
+        self._videoBitmap = None
 
         # add reference Txt control button
         self._referenceTextCtrl = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
@@ -128,15 +129,31 @@ class InteractiveRecognizer(wx.Frame):
         #  add newline char
         self._predictionStaticText.SetLabel('\n')
 
+        # add update model button
+        self._updateModelButton = wx.Button(self, label='Add to model')
+        self._updateModelButton.Bind(wx.EVT_BUTTON, self._update_model)
+
         # add clear model button
         self._clearModelButton = wx.Button(self, label='Clear Model')
         self._clearModelButton.Bind(
             wx.EVT_BUTTON, self._clear_model
         )
+        if not self._recognizerTrained:  # if model doesnot exist , disable the clear model buttton
+            self._clearModelButton.Disable()
 
-        # add update model button
-        self._updateModelButton = wx.Button(self, label='Add to model')
-        self._updateModelButton.Bind(wx.EVT_BUTTON, self._update_model)
+        # Putting up the controls
+        border = 12
+        controls_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        controls_sizer.Add(self._referenceTextCtrl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border)
+        controls_sizer.Add(self._updateModelButton, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border)
+        controls_sizer.Add(self._predictionStaticText, 0, wx.ALIGN_CENTER_VERTICAL)
+        controls_sizer.Add((0, 0), 1)  # spacer
+        controls_sizer.Add(self._clearModelButton,0, wx.ALIGN_CENTER_VERTICAL)
+
+        root_sizer = wx.BoxSizer(wx.VERTICAL)
+        root_sizer.Add(self._videoPanel)
+        root_sizer.Add(controls_sizer, 0, wx.EXPAND | wx.ALL, border)
+        self._setSizerAndFit(root_sizer)
 
         # starting a background thread which captures the video and processs, detects and recognize
         # handling the compute intensive work in background for unblocking the GUI events
