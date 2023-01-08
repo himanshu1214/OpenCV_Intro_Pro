@@ -89,8 +89,9 @@ class InteractiveRecognizer(wx.Frame):
 
         # setting the GUI widgets (video panel, buttons, label, text field) and set their callbacks
         self._videoPanel = wx.Panel(self, size=size)
-        self._videoPanel.Bind(wx.EVT_ERASE_BACKGROUND, self._on_video_panel_erase_background)
-
+        self._videoPanel.Bind(
+            wx.EVT_ERASE_BACKGROUND, self._on_video_panel_erase_background
+        )
 
         # Setting the style, background colour, size and title
         style = (
@@ -110,13 +111,19 @@ class InteractiveRecognizer(wx.Frame):
         # map a keyboard shortcut to the menu event using class wx.AcceleratorTable
         quit_command_id = wx.NewId()
         self.Bind(wx.EVT_MENU, self._on_quit_command, id=quit_command_id)
-        accelerator_table = wx.AcceleratorTable([(wx.ACCEL_NORMAL, wx.WXK_ESCAPE, quit_command_id)])
+        accelerator_table = wx.AcceleratorTable(
+            [(wx.ACCEL_NORMAL, wx.WXK_ESCAPE, quit_command_id)]
+        )
         self.SetAcceleratorTable(accelerator_table)
 
         # add a video panel , text field, panel and label
         self._videoPanel = wx.Panel(self, size=size)
-        self._videoPanel.Bind(wx.EVT_ERASE_BACKGROUND, self._on_video_panel_erase_background)  # binding the callback to erase
-        self._videoPanel.Bind(wx.EVT_PAINT, self._on_video_panel_paint)  # bind callback to set the images
+        self._videoPanel.Bind(
+            wx.EVT_ERASE_BACKGROUND, self._on_video_panel_erase_background
+        )  # binding the callback to erase
+        self._videoPanel.Bind(
+            wx.EVT_PAINT, self._on_video_panel_paint
+        )  # bind callback to set the images
         self._videoBitmap = None
 
         # add reference Txt control button
@@ -127,28 +134,32 @@ class InteractiveRecognizer(wx.Frame):
         self._predictionStaticText = wx.StaticText(self)
 
         #  add newline char
-        self._predictionStaticText.SetLabel('\n')
+        self._predictionStaticText.SetLabel("\n")
 
         # add update model button
-        self._updateModelButton = wx.Button(self, label='Add to model')
+        self._updateModelButton = wx.Button(self, label="Add to model")
         self._updateModelButton.Bind(wx.EVT_BUTTON, self._update_model)
 
         # add clear model button
-        self._clearModelButton = wx.Button(self, label='Clear Model')
-        self._clearModelButton.Bind(
-            wx.EVT_BUTTON, self._clear_model
-        )
-        if not self._recognizerTrained:  # if model doesnot exist , disable the clear model buttton
+        self._clearModelButton = wx.Button(self, label="Clear Model")
+        self._clearModelButton.Bind(wx.EVT_BUTTON, self._clear_model)
+        if (
+            not self._recognizerTrained
+        ):  # if model doesnot exist , disable the clear model buttton
             self._clearModelButton.Disable()
 
         # Putting up the controls
         border = 12
         controls_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        controls_sizer.Add(self._referenceTextCtrl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border)
-        controls_sizer.Add(self._updateModelButton, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border)
+        controls_sizer.Add(
+            self._referenceTextCtrl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border
+        )
+        controls_sizer.Add(
+            self._updateModelButton, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border
+        )
         controls_sizer.Add(self._predictionStaticText, 0, wx.ALIGN_CENTER_VERTICAL)
         controls_sizer.Add((0, 0), 1)  # spacer
-        controls_sizer.Add(self._clearModelButton,0, wx.ALIGN_CENTER_VERTICAL)
+        controls_sizer.Add(self._clearModelButton, 0, wx.ALIGN_CENTER_VERTICAL)
 
         root_sizer = wx.BoxSizer(wx.VERTICAL)
         root_sizer.Add(self._videoPanel)
@@ -184,7 +195,6 @@ class InteractiveRecognizer(wx.Frame):
         """
         self.Close()
 
-
     def _on_video_panel_erase_background(self):
         """"""
 
@@ -209,7 +219,7 @@ class InteractiveRecognizer(wx.Frame):
 
         # check if model exist using the trained model flag
         if self._recognizerTrained:
-            self._recognizer.update(src,labels)
+            self._recognizer.update(src, labels)
         else:
             self._recognizer.train(src, labels)
             self._recognizerTrained = True
@@ -225,7 +235,9 @@ class InteractiveRecognizer(wx.Frame):
         self._clearModelButton().Disable()
         if os.path.isfile(self._recognizer_path):
             os.remove(self._recognizer_path)
-        self._recognizer = cv2.face.LBPHFaceRecognizer_create()  # create the new untrained model
+        self._recognizer = (
+            cv2.face.LBPHFaceRecognizer_create()
+        )  # create the new untrained model
 
     def run_capture_loop(self):
         """
@@ -244,7 +256,10 @@ class InteractiveRecognizer(wx.Frame):
 
                     # swapping the image captured to front buffer and front to back buffer
                     self._image_front_buffer_lock.acquire()
-                    self._image, self._image_from_buffer = self._image_from_buffer, self._image
+                    self._image, self._image_from_buffer = (
+                        self._image_from_buffer,
+                        self._image,
+                    )
 
                     # release the lock
                     self._image_front_buffer_lock.release()
@@ -268,37 +283,45 @@ class InteractiveRecognizer(wx.Frame):
 
         # using Multiscale method to detect face and use green rectangle as boundary
         # return a list of rectangles which shows the bound of face
-        detct = self._detector.detectMultiScale(self._equalized_gray_image,
-                                                scaleFactor=self._scaleFactor,
-                                                min_neighbor=self._minNeighbors,
-                                                minSize=self._minSize)
+        detct = self._detector.detectMultiScale(
+            self._equalized_gray_image,
+            scaleFactor=self._scaleFactor,
+            min_neighbor=self._minNeighbors,
+            minSize=self._minSize,
+        )
 
-        for x,y, w, h in detct:
-            cv2.rectangle(self._image, (x, y), (x+w, y+h), self._rectColor, 1)
+        for x, y, w, h in detct:
+            cv2.rectangle(self._image, (x, y), (x + w, y + h), self._rectColor, 1)
 
-        if len(detct) >0:
-            x, y, w,h = detct[0]
+        if len(detct) > 0:
+            x, y, w, h = detct[0]
             # if atleast one face is detected, store detected face in equalized gray scale
             # equalized image is based on the cropped image for better avg local contrast instead of whole image
-            self._curr_detected_obj = cv2.equalizeHist(self._gray_image[y:y+h, x:x+w])
+            self._curr_detected_obj = cv2.equalizeHist(
+                self._gray_image[y : y + h, x : x + w]
+            )
 
-        # if model exist even for 1 image trained, then model will return 2 integer name and distance (confidence value)
+            # if model exist even for 1 image trained, then model will return 2 integer name and distance (confidence value)
             if self._recognizerTrained:
                 try:
-                    label_as_int, distance = self._recognizer.predict(self._curr_detected_obj)
+                    label_as_int, distance = self._recognizer.predict(
+                        self._curr_detected_obj
+                    )
                     label_as_str = binascii_utils.int_to_four_char(label_as_int)
-                    self._show_message(f"Looks similar to the image :{label_as_str} and distance is : {distance}")
+                    self._show_message(
+                        f"Looks similar to the image :{label_as_str} and distance is : {distance}"
+                    )
                 except cv2.error:
-                    print >> sys.stderr,  'recreating model due to err'
+                    print >> sys.stderr, "recreating model due to err"
                     self.clear_model()
 
             else:
                 self._show_instructions()
         else:
             self._curr_detected_obj = None  # set current object detected to None
-            if self._recognizerTrained: # if model exist then print message on screen
+            if self._recognizerTrained:  # if model exist then print message on screen
                 self._clear_message()
-            else: # show instructions
+            else:  # show instructions
                 self._show_instructions()
 
         # adding the enable/disable add to model button
@@ -338,8 +361,10 @@ class InteractiveRecognizer(wx.Frame):
     # helper methods to show message
     def _show_instructions(self):
         """"""
-        self._show_message('when object is highlighted, input the name max four chars \n'
-                           'and click add to model')
+        self._show_message(
+            "when object is highlighted, input the name max four chars \n"
+            "and click add to model"
+        )
 
     def _clear_message(self):
         """"""
@@ -348,5 +373,3 @@ class InteractiveRecognizer(wx.Frame):
     def _show_message(self, message):
         """"""
         wx.CallAfter(self._prediction_static_text, message)
-
-
